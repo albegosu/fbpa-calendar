@@ -20,14 +20,19 @@ GitHub Pages sirve el fichero en una URL pública a la que Google Calendar se su
 pip install -r requirements.txt
 python fbpa_ics.py \
   --url "https://www.fbpa.es/competicion-17433/competiciones-federadas-" \
+  --categoria "PRIMERA FBPA Fem" \
   --team "GIJON BASKET 2015 CORPI" \
   --out docs/calendar.ics
 ```
 
 ## Otro equipo o competición
 
-Cambia `COMPETITION_URL`, `TEAM` y `CAL_NAME` en `.github/workflows/update-calendar.yml`.
-El nombre del equipo se compara sin tildes ni mayúsculas.
+Cambia `COMPETITION_URL`, `CATEGORIA`, `TEAM` y `CAL_NAME` en `.github/workflows/update-calendar.yml`.
+
+La página de competición carga por defecto la primera categoría del desplegable (p. ej. *PRIMERA FBPA Mas*);
+`CATEGORIA` elige otra por su nombre en el desplegable o por su id. Un mismo club puede tener equipos con
+el mismo nombre en varias categorías, así que no basta con `TEAM`. Si la categoría no existe, el error lista
+las disponibles. Nombres de categoría y equipo se comparan sin tildes ni mayúsculas.
 
 ## Comportamiento
 

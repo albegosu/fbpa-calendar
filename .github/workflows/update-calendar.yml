@@ -17,8 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPETITION_URL: https://www.fbpa.es/competicion-17433/competiciones-federadas-
+      CATEGORIA: PRIMERA FBPA Fem
       TEAM: GIJON BASKET 2015 CORPI
-      CAL_NAME: Gijón Basket 2015 Corpi – Primera FBPA
+      CAL_NAME: Gijón Basket 2015 Corpi – Primera FBPA Fem
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,7 +27,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python fbpa_ics.py --url "$COMPETITION_URL" --team "$TEAM" --name "$CAL_NAME" --out docs/calendar.ics
+      - run: python fbpa_ics.py --url "$COMPETITION_URL" --categoria "$CATEGORIA" --team "$TEAM" --name "$CAL_NAME" --out docs/calendar.ics
       - name: Commit si hay cambios
         run: |
           if [[ -n "$(git status --porcelain docs/)" ]]; then

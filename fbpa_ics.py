@@ -144,6 +144,43 @@ def build_ics(team, url, matches, venues, localities, cal_name):
     return "\r\n".join(lines) + "\r\n", n
 
 
+def fetch(url: str, categoria: str | None) -> str:
+    s = requests.Session()
+    s.headers["User-Agent"] = "Mozilla/5.0 (fbpa-ics)"
+
+    def get_text(r):
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding or "utf-8"
+        return r.text
+
+    html = get_text(s.get(url, timeout=30))
+    if not categoria:
+        return html
+
+    # La web es ASP.NET: la categoría se elige con un postback del desplegable DDLCategorias
+    form = BeautifulSoup(html, "html.parser").find("form", id="aspnetForm")
+    data = {i["name"]: i.get("value", "") for i in form.find_all("input", attrs={"name": True})
+            if i.get("type", "text") in ("hidden", "text")}
+    for sel in form.find_all("select"):
+        o = sel.find("option", selected=True) or sel.find("option")
+        data[sel["name"]] = o["value"] if o else ""
+    sel = form.find("select", attrs={"name": re.compile(r"DDLCategorias$")})
+    opts = sel.find_all("option")
+    opt = next((o for o in opts if norm(categoria) in (o["value"], norm(o.get_text()))), None)
+    if not opt:
+        sys.exit(f"ERROR: categoría '{categoria}' no encontrada. Disponibles: "
+                 + ", ".join(o.get_text(strip=True) for o in opts))
+    data.update({sel["name"]: opt["value"], "__EVENTTARGET": sel["name"], "__EVENTARGUMENT": ""})
+    html = get_text(s.post(url, data=data, timeout=30))
+
+    # El equipo puede estar en varias categorías: comprobar que la web ha cambiado de verdad
+    got = BeautifulSoup(html, "html.parser").find("select", attrs={"name": sel["name"]})
+    got = got and got.find("option", selected=True)
+    if not got or got["value"] != opt["value"]:
+        sys.exit(f"ERROR: la web no ha devuelto la categoría '{opt.get_text(strip=True)}'. No se sobrescribe el feed.")
+    return html
+
+
 def without_stamp(text: str) -> str:
     return "\n".join(l for l in text.splitlines() if not l.startswith("DTSTAMP:"))
 
@@ -154,16 +191,11 @@ def main():
     ap.add_argument("--team", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--name", default=None, help="Nombre del calendario")
+    ap.add_argument("--categoria", help="Categoría del desplegable, por nombre o id (p. ej. 'PRIMERA FBPA Fem')")
     ap.add_argument("--html", help="Leer HTML de un fichero local (pruebas)")
     a = ap.parse_args()
 
-    if a.html:
-        html = Path(a.html).read_text(encoding="utf-8")
-    else:
-        r = requests.get(a.url, timeout=30, headers={"User-Agent": "Mozilla/5.0 (fbpa-ics)"})
-        r.raise_for_status()
-        r.encoding = r.apparent_encoding or "utf-8"
-        html = r.text
+    html = Path(a.html).read_text(encoding="utf-8") if a.html else fetch(a.url, a.categoria)
 
     matches, venues, localities = parse(html)
     ics, n = build_ics(a.team, a.url, matches, venues, localities, a.name or a.team.title())
